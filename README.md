@@ -67,3 +67,35 @@ Example output
 2022/11/01 10:08:34 Web settings
 2022/11/01 10:08:34     Login:                  <Your configured username>,<Your configured password>
 ```
+
+### Sending AT-Commands
+
+`main -t <ip of the logger>:48899 -xat <at command>`
+
+Example
+```
+main -t <ip of the logger>:48899 -xat AT+WEBVER
+2022/11/11 12:37:51 * Connecting :0 -> <ip of the logger>:48899...
+2022/11/11 12:37:54 +ok=V1.0.24
+```
+
+### Sending ModBus read command
+
+`main -t <ip of the logger>:48899 -xmb <Start_Register+Length>`
+
+So with a start register address of 0012 and a length of 0001 only one register is read.
+
+```
+main -t <ip of the logger>:48899 -xmb 00120001
+2022/11/11 12:39:26 * Connecting :0 -> <ip of the logger>:48899...
+2022/11/11 12:39:29 +ok=01030204017B44
+```
+
+Explanation
+```
+01      is the slave id
+03      is the function code (read)
+02      is the length of the payload (2 bytes)
+0401    is the playload, i that case 04 is the number of MPPT and 01 is number of ac phases (you need to know how to interpret the register.)
+7B44    is the crc16
+```
