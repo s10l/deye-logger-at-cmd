@@ -1,5 +1,7 @@
 # deye-logger-at-cmd
 
+Update: Please send a request to Deye to update your inverter firmware at least to 1.53. After the update you where able to change WiFi mode and credentials.
+
 Deye based micro inverters use a built-in WLAN module for quick configuration.
 
 The WLAN module works in AP+STA mode, i.e. it starts an access point and is able to connect to another access point at the same time.
