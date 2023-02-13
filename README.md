@@ -1,6 +1,8 @@
 # deye-logger-at-cmd
 
-Update: Please send a request to Deye to update your inverter firmware at least to 1.53. After the update you where able to change WiFi mode and credentials.
+> Update 2023-02-13: Got feedback from users that Deye is now rolling out the update automatically. Please make sure that your device is registered in Solarman or update it manually (offline).
+
+> Update 2023-01-11: Please send a request to Deye to update your inverter firmware at least to 1.53. After the update you where able to change WiFi mode and credentials.
 
 Deye based micro inverters use a built-in WLAN module for quick configuration.
 
@@ -100,4 +102,61 @@ Explanation
 02      is the length of the payload (2 bytes)
 0401    is the playload, i that case 04 is the number of MPPT and 01 is number of ac phases (you need to know how to interpret the register.)
 7B44    is the crc16
+```
+
+### Sending ModBus write command
+
+> You may damage or destroy the device or other equipment and seriously injure or kill yourself or others. Be warned herewith.
+
+`main -t <ip of the logger>:48899 -xmbw <Start_Register+Length+Value_Length+Value>`
+
+```
+main -t <ip of the logger>:48899 -xmbw 00280001020064
+2022/11/11 12:39:26 * Connecting :0 -> <ip of the logger>:48899...
+2022/11/11 12:39:29 +ok=01100028000181C1
+```
+
+Explanation of -xmbw
+```
+0028    is the start address            (Active power regulation)
+0001    is the number of registers      (1)
+02      is the length of the value      (2 bytes)
+0064    is the value                    (0x0064 -> 100)
+```
+
+## Structure of commands
+
+### Read commands
+
+```
+DATAGRAM	:= ATCMD + MODBUSLEN + SEPERATOR + MODBUSMSG + MODBUSCRC + NEWLINE
+ATCMD		:= AT+INVDATA=
+MODBUSLEN	:= len(MODBUSMSG + MODBUSCRC)
+MODBUSCRC	:= crc(MODBUSMSG)
+SEPERATOR	:= ,
+MODBUSMSG	:= SLAVE + FCODE + STARTADDR + REGSIZE
+SLAVE		:= 01
+FCODE		:= 03
+STARTADDR	:= FFFF
+REGSIZE		:= 0001
+VALUELEN   	:= len(VALUE)
+VALUE		:= 0000
+NEWLINE     := \n
+```
+
+### Write commands
+```
+DATAGRAM	:= ATCMD + MODBUSLEN + SEPERATOR + MODBUSMSG + MODBUSCRC + NEWLINE
+ATCMD		:= AT+INVDATA=
+MODBUSLEN	:= len(MODBUSMSG + MODBUSCRC)
+MODBUSCRC	:= crc(MODBUSMSG)
+SEPERATOR	:= ,
+MODBUSMSG	:= SLAVE + FCODE + STARTADDR + REGSIZE + VALUELEN + VALUE
+SLAVE		:= 01
+FCODE		:= 10
+STARTADDR	:= FFFF
+REGSIZE		:= 0001
+VALUELEN   	:= len(VALUE)
+VALUE		:= 0000
+NEWLINE     := \n
 ```

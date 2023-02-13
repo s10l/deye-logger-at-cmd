@@ -1,6 +1,5 @@
 package main
 
-//https://www.rabbitmq.com/tutorials/tutorial-one-go.html
 import (
 	"bufio"
 	"encoding/binary"
@@ -21,11 +20,12 @@ var (
 	fSource      = flag.String("xs", "", "Local source address")
 	fWifiCfgCode = flag.String("xc", "WIFIKIT-214028-READ", "WiFi configuration code [WIFIKIT-214028-READ or HF-A11ASSISTHREAD]")
 	fAtCmd       = flag.String("xat", "", "Send AT command instead of credentials")
-	fModBus      = flag.String("xmb", "", "Send Modbus read register instead of credentials [00120001] -> Read register 0x0012, length = 1")
+	fModBus      = flag.String("xmb", "", "Send Modbus read register instead of credentials [00120001] -> Read register = 0x0012, length = 0x0001")
+	fModBusW     = flag.String("xmbw", "", "Send Modbus write register instead of credentials [00280001020064] -> Write register = 0x0028, length = 0x0001, value length = 0x02, value = 0x0064")
 	fVerbose     = flag.Bool("xv", false, "Outputs all communication with the logger")
 
 	lAddress, rAddress *net.UDPAddr
-	handler            Handler = credentialsHandler
+	handler            Handler = nil
 )
 
 func init() {
@@ -52,24 +52,54 @@ func init() {
 		log.Fatal(err)
 	}
 
-	if fAtCmd != nil && *fAtCmd != "" && fModBus != nil && *fModBus != "" {
-		fmt.Println("You can't use xat and xmb at the same time")
-		flag.Usage()
-		os.Exit(1)
+	checkForArgConflicts := func() {
+		if handler != nil {
+			fmt.Println("You can't use xat, xmb or xmbw at the same time")
+			fmt.Println()
+			flag.Usage()
+			os.Exit(1)
+		}
 	}
 
 	if fAtCmd != nil && *fAtCmd != "" {
 		handler = atCommandHandler
-	} else if fModBus != nil && *fModBus != "" {
+	}
+
+	if fModBus != nil && *fModBus != "" {
+		checkForArgConflicts()
+
 		if len(*fModBus) != 8 {
 			fmt.Println("xmb needs first register address and length")
 			fmt.Println("First register 0x0012")
 			fmt.Println("Length 0x0001")
 			fmt.Println("-> 00120001")
+			fmt.Println()
 			flag.Usage()
 			os.Exit(1)
 		}
-		handler = modBusHandler
+		handler = modBusReadHandler
+	}
+
+	if fModBusW != nil && *fModBusW != "" {
+		checkForArgConflicts()
+
+		if len(*fModBusW) < 14 {
+			fmt.Println("xmbw needs first register address, length, value length, and value")
+			fmt.Println("First register 0x0028")
+			fmt.Println("Length 0x0001")
+			fmt.Println("Value length 0x02")
+			fmt.Println("Value 0x0064")
+			fmt.Println("-> 00280001020064")
+			fmt.Println()
+			flag.Usage()
+			os.Exit(1)
+		}
+
+		handler = modBusWriteHandler
+	}
+
+	if handler == nil {
+		handler = credentialsHandler
 	}
 }
 
@@ -139,20 +169,31 @@ func atCommandHandler(conn *net.UDPConn) {
 	log.Println(*response)
 }
 
-func modBusHandler(conn *net.UDPConn) {
+func modBusReadHandler(conn *net.UDPConn) {
 	prefix := "0103" // Slave ID + Function
 	cmd := fmt.Sprintf("%s%s", prefix, (*fModBus))
+	modBusHandler(conn, prefix, cmd)
+}
+
+func modBusWriteHandler(conn *net.UDPConn) {
+	prefix := "0110" // Slave ID + Function
+	cmd := fmt.Sprintf("%s%s", prefix, (*fModBusW))
+	modBusHandler(conn, prefix, cmd)
+}
+
+func modBusHandler(conn *net.UDPConn, prefix string, cmd string) {
 	data, err := hex.DecodeString(cmd)
 	if err != nil {
 		log.Fatal(err)
 	}
 	crc := Modbus(data)
+	msg := fmt.Sprintf("%s%s", cmd, hex.EncodeToString(crc))
+	msglen := len(msg) / 2
 
-	tresponse := send(conn, fmt.Sprintf("AT+INVDATA=8,%s%s\n", cmd, hex.EncodeToString(crc)), 1, 5, true)
+	tresponse := send(conn, fmt.Sprintf("AT+INVDATA=%d,%s\n", msglen, msg), 1, 5, true)
 
 	response := strings.ReplaceAll(*tresponse, string([]byte{0x10}), "")
 	log.Println(response)
-
 }
 
 func credentialsHandler(conn *net.UDPConn) {
