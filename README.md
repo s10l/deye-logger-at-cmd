@@ -1,5 +1,18 @@
 # deye-logger-at-cmd
 
+## Credentials lost?
+Have you forgotten your credentials and want to reset them? You've come to the right place.
+
+Only use this tool for devices you own!
+
+- Download release from https://github.com/s10l/deye-logger-at-cmd/releases
+- Open a terminal window and browse to downloaded file
+- Run the command below, but change the ip to the ip of the inverter
+`main -t 192.168.0.20:48899 -xat AT+WEBU=admin,admin`
+- Try to login with username: **admin** and password: **admin**
+- Voila, but rember to do this only with devices you own!
+
+## Updates
 > Update 2023-02-13: Got feedback from users that Deye is now rolling out the update automatically. Please make sure that your device is registered in Solarman or update it manually (offline).
 
 > Update 2023-01-11: Please send a request to Deye to update your inverter firmware at least to 1.53. After the update you where able to change WiFi mode and credentials.
